@@ -14,7 +14,9 @@ class Post(models.Model):
 
 
 class Comment(models.Model):
-    post = models.ForeignKey(Post, on_delete=models.CASCADE, verbose_name="게시글")
+    post = models.ForeignKey(
+        Post, on_delete=models.CASCADE, verbose_name="게시글", related_name="comments"
+    )
     content = models.TextField(
         verbose_name="댓글 내용", help_text="댓글 내용을 입력해주세요."
     )
