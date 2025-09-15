@@ -68,7 +68,8 @@ class CommentList(APIView):
             fields = [
                 "id",
                 "content",
-                "author",
+                "author_name",
+                "author_email",
                 "created_at",
             ]
 
@@ -113,8 +114,10 @@ class CommentCreate(APIView):
             except Exception as e:
                 raise serializers.ValidationError("사용자 조회 중 오류가 발생했습니다.")
 
-            # author를 설정하여 Comment 객체 생성
+            # 작성자 정보를 직접 저장 (과거 정보 보존)
             validated_data["author"] = user
+            validated_data["author_name"] = user.username
+            validated_data["author_email"] = user.email
             return Comment.objects.create(**validated_data)
 
     def post(self, request, post_id):
@@ -145,7 +148,8 @@ class PostDetail(APIView):
                 fields = [
                     "id",
                     "content",
-                    "author",
+                    "author_name",
+                    "author_email",
                     "created_at",
                 ]
 
@@ -163,4 +167,45 @@ class PostDetail(APIView):
     def get(self, request, pk):
         post = Post.objects.get(id=pk)
         serializer = self.PostDetailSerializer(post)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# 유저별로 포스트와 댓글을 조회하는 APIView
+class UserPostList(APIView):
+    class UserPostListSerializer(ModelSerializer):
+        class CommentSerializer(ModelSerializer):
+            class Meta:
+                model = Comment
+                fields = [
+                    "id",
+                    "content",
+                    "author_name",
+                    "author_email",
+                    "created_at",
+                ]
+
+        comments = CommentSerializer(many=True, read_only=True)
+
+        class Meta:
+            model = Post
+            fields = [
+                "id",
+                "title",
+                "content",
+                "created_at",
+                "author",
+                "comments",
+            ]
+
+    def get(self, request, user_id):
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response(
+                {"error": "해당 사용자를 찾을 수 없습니다."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        posts = Post.objects.filter(author=user)
+        serializer = self.UserPostListSerializer(posts, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
